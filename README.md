@@ -99,15 +99,3 @@ Se creó una vista llamada `vista_historial_academico` que muestra:
 
 ---
 
-
-
-## 📁 Estructura recomendada
-
-📦gestion_academica_universidad
-┣ 📄README.md
-┣ 📄estructura_base.sql
-┣ 📄inserciones.sql
-┣ 📄consultas.sql
-┣ 📄vista_historial_academico.sql
-┣ 📄roles_y_permisos.sql
-┗ 📄transacciones.sql
