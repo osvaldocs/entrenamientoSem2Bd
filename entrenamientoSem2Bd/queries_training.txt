@@ -1,0 +1,265 @@
+CONSTULTAS BASICAS:
+
+1) Obtener el listado de todos los estudiantes junto con sus inscripciones y cursos (JOIN):
+
+SELECT 
+e.nombre_completo AS estudiante,
+c.nombre AS curso,
+i.fecha_inscripcion AS fecha_inscripcion
+FROM estudiantes e 
+JOIN inscripciones i ON e.id_estudiante = i.id_estudiante
+JOIN cursos c ON i.id_curso = c.id_curso;
+
+
+ -- ver capturaN1.png
+
+2) Listar los cursos dictados por docentes con más de 5 años de experiencia:
+
+SELECT 
+c.nombre AS curso,
+d.nombre_completo AS docente,
+d.anios_experiencia AS experiencia
+FROM cursos c
+JOIN docentes d ON c.id_docente = d.id_docente 
+WHERE d.anios_experiencia >= 5;
+
+-- ver capturaN2.png
+
+3) Obtener el promedio de calificaciones por curso (GROUP BY + AVG).
+
+SELECT 
+c.nombre AS curso,
+AVG(i.calificacion_final) AS  calificacion_promedio_por_curso
+FROM inscripciones i
+JOIN cursos c ON i.id_curso = c.id_curso
+GROUP BY c.nombre;
+
+-- ver capturaN3.png
+
+4) Mostrar los estudiantes que están inscritos en más de un curso (HAVING COUNT(*) > 1).
+
+SELECT
+e.nombre_completo AS nombre_estudiante_inscriptos_en_varios_cursos,
+COUNT(*) AS cantidad_cursos
+FROM inscripciones i
+JOIN estudiantes e ON i.id_estudiante = e.id_estudiante
+GROUP BY e.nombre_completo
+HAVING COUNT(*) > 1
+
+--ver capturaN4.png
+
+5) Agregar una nueva columna estado_academico a la tabla estudiantes (ALTER TABLE).
+
+ALTER TABLE estudiantes
+ADD COLUMN estado_academico ENUM('activo', 'inactivo', 'gradudado') DEFAULT 'activo';
+
+--ver capturaN5.png
+
+6) Eliminar un docente y observar el efecto en la tabla cursos (uso de ON DELETE en FK).
+
+DELETE FROM docentes
+WHERE id_docente = 3;
+
+-- se elimino correctamente, y en la tabla solo quito el registro del curso que daba ese docente. quiza porque tenia 2 docentes dando el mismo curso. (no tenia ON DELETE en la tabla)
+
+--ver capturaN6.png
+
+
+7) Consultar los cursos en los que se han inscrito más de 2 estudiantes (GROUP BY + COUNT + HAVING).
+
+SELECT 
+    c.id_curso,
+    c.nombre,
+    COUNT(i.id_estudiante) AS cantidad_estudiantes
+FROM 
+    inscripciones i
+JOIN 
+    cursos c ON i.id_curso = c.id_curso
+GROUP BY 
+    c.id_curso, c.nombre
+HAVING 
+    COUNT(i.id_estudiante) > 2;
+    
+
+-- ver capturaN7.png
+
+
+
+SUBCONSULTAS Y FUNCIONES:
+
+1) Obtener los estudiantes cuya calificación promedio es superior al promedio general (AVG() + subconsulta).
+
+
+SELECT 
+    e.id_estudiante,
+    e.nombre_completo,
+    AVG(i.calificacion_final) AS promedio_estudiante
+FROM 
+    inscripciones i
+JOIN 
+    estudiantes e ON i.id_estudiante = e.id_estudiante
+GROUP BY 
+    e.id_estudiante, e.nombre_completo
+HAVING 
+    AVG(i.calificacion_final) > (
+        SELECT 
+            AVG(calificacion_final)
+        FROM 
+            inscripciones
+    );
+    
+-- ver capturaN8.png
+
+
+2) Mostrar los nombres de las carreras con estudiantes inscritos en cursos del semestre 2 o posterior (IN o EXISTS).
+
+SELECT DISTINCT e.carrera
+FROM estudiantes e
+WHERE e.id_estudiante IN (
+    SELECT i.id_estudiante
+    FROM inscripciones i
+    JOIN cursos c ON i.id_curso = c.id_curso
+    WHERE c.semestre >= 2
+);
+    
+--ver capturaN9.png
+
+
+3) Utiliza funciones como ROUND, SUM, MAX, MIN y COUNT para explorar distintos indicadores del sistema.
+
+promedio redondeado por curso con ROUND + AVG
+
+SELECT 
+    c.nombre AS nombre_curso,
+    ROUND(AVG(i.calificacion_final), 2) AS promedio_redondeado
+FROM 
+    inscripciones i
+JOIN 
+    cursos c ON i.id_curso = c.id_curso
+GROUP BY 
+    c.nombre;
+    
+--ver capturaN10.png
+
+
+cantidad de  estudiantes inscriptos por carrera con COUNT
+
+SELECT 
+    e.carrera,
+    COUNT(DISTINCT e.id_estudiante) AS cantidad_estudiantes
+FROM 
+    inscripciones i
+JOIN 
+    estudiantes e ON i.id_estudiante = e.id_estudiante
+GROUP BY 
+    e.carrera;
+    
+--ver capturaN11.png
+
+
+calificacion minima y máxima con MIN y MAX
+
+
+SELECT 
+    MAX(calificacion_final) AS calificacion_maxima,
+    MIN(calificacion_final) AS calificacion_minima
+FROM 
+    inscripciones;
+    
+-- ver capturaN12.png
+
+
+
+
+Crear una vista
+Crea una vista llamada vista_historial_academico que muestre:
+Nombre del estudiante
+Nombre del curso
+Nombre del docente
+Semestre
+Calificación final:
+
+CREATE VIEW vista_historial_academico AS
+SELECT 
+    e.nombre_completo AS nombre_estudiante,
+    c.nombre AS nombre_curso,
+    d.nombre_completo AS nombre_docente,
+    c.semestre,
+    i.calificacion_final
+FROM 
+    inscripciones i
+JOIN 
+    estudiantes e ON i.id_estudiante = e.id_estudiante
+JOIN 
+    cursos c ON i.id_curso = c.id_curso
+JOIN 
+    docentes d ON c.id_docente = d.id_docente;
+
+
+se consulta con:
+
+SELECT * FROM vista_historial_academico;
+
+--ver capturaN13.png
+
+
+CONTROL DE ACCESOS Y TRANSACCIONES:
+
+1) Asigna permisos de solo lectura a un rol llamado revisor_academico sobre la vista vista_historial_academico (GRANT SELECT)./li>:
+
+priero lo creamos con:
+
+CREATE ROLE revisor_academico;
+
+
+Luego lo asignamos con:
+
+GRANT SELECT ON vista_historial_academico TO revisor_academico;
+
+
+verificarmos que  el rol creado tenga esos permisos:
+
+SHOW GRANTS FOR revisor_academico;
+	
+-- ver capturaN14.png
+
+
+2) Revoca los permisos de modificación de datos sobre la tabla inscripciones a este rol (REVOKE)
+
+en caso de que le hayamos otorgado los permisos seria con:
+
+REVOKE INSERT, UPDATE, DELETE ON inscripciones FROM revisor_academico;
+
+
+pero solo le dimos el permiso de mirar la tabla temporal vista_historial_academico (si ejecutamos la linea anterior da error)
+
+
+3) Simula una operación de actualización de calificaciones usando BEGIN, SAVEPOINT, ROLLBACK y COMMIT.
+
+
+-- arranco la transacción
+BEGIN;
+
+-- actualizo la nota de un estudiante, este usuario ya tenia nota
+UPDATE inscripciones
+SET calificacion_final = 4.5
+WHERE id_estudiante = 1 AND id_curso = 2;
+
+-- guardo este punto por si hay un error despues
+SAVEPOINT antes_del_segundo_cambio;
+
+-- voy a actualizar otra nota para simular un error, pero m di cuenta que no tenia check en este registro, entonces no tiro error.
+SET calificacion_final = -1
+WHERE id_estudiante = 2 AND id_curso = 3;
+
+-- si esta mal vuelvo al punto de guardado
+ROLLBACK TO antes_del_segundo_cambio;
+
+-- ahora actualizo otra calificación que sí está bien
+UPDATE inscripciones
+SET calificacion_final = 3.8
+WHERE id_estudiante = 3 AND id_curso = 1;
+
+-- y se confirman los datos con:
+COMMIT;
+
